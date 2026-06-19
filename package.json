@@ -6,9 +6,9 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "discord.js": "^14.14.0",
-    "@napi-rs/canvas": "^0.1.58",
-    "@discordjs/voice": "^0.17.0",
-    "express": "^4.19.2"
+    "discord.js": "14.14.0",
+    "@napi-rs/canvas": "1.0.0",
+    "@discordjs/voice": "0.17.0",
+    "express": "4.19.2"
   }
 }
