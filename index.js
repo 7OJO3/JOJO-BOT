@@ -16,13 +16,13 @@ const play = require('play-dl');
 
 
 
+   const config = {
     panelImage: "https://cdn.discordapp.com/attachments/1035223472898584727/1515559849436516382/panel.png",
     matchingRoomId: "1516548178382688408",
     profileRoomId: "1501583456872829068",
     autoJoinRoomId: "123456789012345678",
-    colorRoomId: "1515250871313408142"   
-
-};   
+    colorRoomId: "1515250871313408142"
+};
 
 
 
