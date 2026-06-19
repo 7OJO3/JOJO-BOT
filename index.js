@@ -1,4 +1,5 @@
-const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActivityType, REST, Routes, AttachmentBuilder } = require('discord.js');
+require('dotenv').config();
+const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const { createCanvas, loadImage } = require('canvas');
 const { joinVoiceChannel } = require('@discordjs/voice');
 const express = require('express');
