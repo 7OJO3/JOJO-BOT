@@ -10,15 +10,19 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 const config = {
-    panelImage: "https://cdn.discordapp.com/attachments/1035223472898584727/1515559849436516382/panel.png",
+    panelImage: "https://cdn.discordapp.com/attachments/1035223472898584727/1515559849436516382/pane1.png",
     matchingRoomId: "1516548178382688408",
     profileRoomId: "1501583456872829068",
     autoJoinRoomId: "123456789012345678",
     colorRoomId: "1515250871313408142"
-};
+}; // تأكدي أن الفاصلة بعد آخر عنصر غير موجودة، والقوس مغلق بفاصلة منقوطة
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers],
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent
+    ],
     partials: [Partials.Channel, Partials.Message, Partials.User]
 });
 
