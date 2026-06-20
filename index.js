@@ -1,52 +1,77 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, ActivityType, REST, Routes } = require('discord.js');
-const express = require('express');
+const { Client, GatewayIntentBits, ActivityType, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { createCanvas, loadImage } = require('canvas');
 
-// Express لتثبيت البوت في الاستضافات
-const app = express();
-app.get('/', (req, res) => res.send('Bot is Alive!'));
-app.listen(process.env.PORT || 3000);
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
-const client = new Client({
-    intents: [GatewayIntentBits.Guilds]
-});
-
-client.once('ready', async () => {
-    // حالة البث (الستريمنق)
-    client.user.setActivity('JOJO’s Designs', {
-        type: ActivityType.Streaming,
-        url: 'https://www.twitch.tv/discord'
-    });
-
-    // تسجيل الأمر الجديد (profile)
-    const commands = [{
-        name: 'profile',
-        description: 'عرض بروفايل سريع',
-        options: [{ name: 'user', type: 6, description: 'اختر مستخدم', required: true }]
-    }];
-
-    const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+client.on('ready', () => {
+    console.log(`Logged in as ${client.user.tag}!`);
     
-    console.log(`✅ البوت متصل الآن: ${client.user.tag}`);
+    // Fake Streaming
+    client.user.setPresence({
+        activities: [{ 
+            name: 'Watching .e_9', 
+            type: ActivityType.Streaming,
+            url: 'https://www.twitch.tv/fajer' 
+        }],
+        status: 'online'
+    });
 });
 
-client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
+client.on('messageCreate', async message => {
+    if (message.content === '!profile') {
+        const card = await createProfileCard(message.member);
+        const button = new ButtonBuilder()
+            .setCustomId('get_original_assets')
+            .setLabel('Try')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('1513336672870469793');
 
-    if (interaction.commandName === 'profile') {
-        const user = interaction.options.getUser('user');
+        const row = new ActionRowBuilder().addComponents(button);
+        const targetChannel = message.guild.channels.cache.get('1501583456872829068');
         
-        // الرد الفوري (بدون إنتظار)
-        await interaction.reply({
-            embeds: [{
-                color: 0x2b2d31,
-                title: `بروفايل: ${user.username}`,
-                image: { url: user.displayAvatarURL({ size: 1024, dynamic: true }) },
-                footer: { text: 'تم الجلب فوراً وبدون تعليق' }
-            }]
-        });
+        if (targetChannel) {
+            targetChannel.send({ files: [card], components: [row] });
+        }
     }
 });
+
+client.on('interactionCreate', async i => {
+    if (!i.isButton()) return;
+    if (i.customId === 'get_original_assets') {
+        const embed = new EmbedBuilder()
+            .setTitle('Original Assets')
+            .setImage(i.user.displayAvatarURL({ size: 1024 }))
+            .setDescription('هذه صورة الأفاتار الأصلية');
+        await i.reply({ embeds: [embed], ephemeral: true });
+    }
+});
+
+async function createProfileCard(member) {
+    const canvas = createCanvas(800, 450);
+    const ctx = canvas.getContext('2d');
+    
+    // الخلفية
+    ctx.fillStyle = '#121212';
+    ctx.fillRect(0, 0, 800, 450);
+    ctx.fillStyle = '#1e1e1e';
+    ctx.fillRect(0, 0, 800, 200);
+
+    // الأفاتار
+    const avatar = await loadImage(member.user.displayAvatarURL({ extension: 'png' }));
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(120, 200, 70, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(avatar, 50, 130, 140, 140);
+    ctx.restore();
+
+    // النصوص
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 35px Sans-serif';
+    ctx.fillText(member.user.username, 220, 210);
+    
+    return new AttachmentBuilder(canvas.toBuffer(), { name: 'profile.png' });
+}
 
 client.login(process.env.TOKEN);
