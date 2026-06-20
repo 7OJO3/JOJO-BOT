@@ -1,15 +1,16 @@
 {
-  "name": "jojo-bot",
+  "name": "fajer-profile-bot",
   "version": "1.0.0",
+  "description": "Profile Card Bot for Fajer",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@discordjs/voice": "^0.17.0",
-    "@napi-rs/canvas": "^0.1.58",
-    "discord.js": "^14.15.3",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2"
-  }
+    "discord.js": "^14.15.0",
+    "canvas": "^2.11.2",
+    "dotenv": "^16.4.5"
+  },
+  "author": "Fajer",
+  "license": "MIT"
 }
