@@ -1,7 +1,6 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, ActivityType, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
-const { createCanvas, loadImage } = require('canvas');
-
+const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
 const TARGET_CHANNEL_ID = '1501583456872829068';
