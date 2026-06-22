@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, AttachmentBuilder, ActivityType, Events } = require('discord.js');
+const { Client, GatewayIntentBits, AttachmentBuilder, ActivityType, Events, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { joinVoiceChannel } = require('@discordjs/voice');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const express = require('express');
@@ -13,7 +13,7 @@ if (fs.existsSync(fontPath)) {
 } else {
     console.error('⚠️ تحذير: ملف font.ttf غير موجود في المجلد!');
 }
-const FONT_NAME = 'MyCustomFont'; // هنا تم تثبيت اسم الفونت
+const FONT_NAME = 'MyCustomFont';
 
 const app = express();
 app.listen(process.env.PORT || 3000);
@@ -54,7 +54,6 @@ async function createProfileCard(bannerUrl, avatarUrl, member) {
     ctx.drawImage(avatar, 65, 285, 170, 170);
     ctx.restore();
 
-    // استخدام الفونت المخصص في كل النصوص
     ctx.fillStyle = '#ffffff';
     ctx.font = `bold 32px "${FONT_NAME}"`;
     ctx.fillText(member.user.username, 260, 380);
@@ -99,7 +98,20 @@ client.on(Events.MessageCreate, async (message) => {
     
     try {
         const card = await createProfileCard(message.attachments.first().url, message.attachments.at(1).url, message.member);
-        await targetChannel.send({ files: [card] });
+        
+        // تعريف زر Try
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('try_design')
+                    .setLabel('Try')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+
+        await targetChannel.send({ 
+            files: [card],
+            components: [row]
+        });
         await message.reply('✅ تم إرسال تصميمك.');
     } catch (err) {
         console.error(err);
