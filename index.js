@@ -6,21 +6,17 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 
-// --- 1. إعداد الخط ---
+// تحميل الخط المخصص (تأكد أن الملف باسم font.ttf في نفس مجلد الكود)
 const fontPath = path.join(__dirname, 'font.ttf');
 if (fs.existsSync(fontPath)) {
     GlobalFonts.registerFromPath(fontPath, 'MyCustomFont');
 }
 
-// --- 2. إعداد الخادم ---
-const app = express();
-app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(process.env.PORT || 3000);
-
 const client = new Client({ 
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildVoiceStates] 
 });
 
+// الثوابت الخاصة بك
 const TARGET_CHANNEL_ID = '1501583456872829068';
 const VOICE_CHANNEL_ID = '1518127536834613360';
 const EMOJI_ID = '1513336672870469793';
@@ -28,116 +24,88 @@ const ROLE_ID = '1501374221992071348';
 const MY_USER_ID = '890586243346354216'; 
 const designCache = new Map();
 
-// دالة قص الصورة (Cover)
+// دالة قص احترافية (Cover) تقص الحواف وتملأ المساحة بدون أي مطّ
 function drawImageCover(ctx, img, x, y, width, height) {
-    const imgRatio = img.width / img.height;
-    const destRatio = width / height;
-    let sWidth, sHeight, sx, sy;
-
-    if (imgRatio > destRatio) {
-        sWidth = img.height * destRatio;
-        sHeight = img.height;
-        sx = (img.width - sWidth) / 2;
-        sy = 0;
-    } else {
-        sWidth = img.width;
-        sHeight = img.width / destRatio;
-        sx = 0;
-        sy = (img.height - sHeight) / 2;
-    }
+    const ratio = Math.max(width / img.width, height / img.height);
+    const sWidth = width / ratio;
+    const sHeight = height / ratio;
+    const sx = (img.width - sWidth) / 2;
+    const sy = (img.height - sHeight) / 2;
     ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, width, height);
 }
 
 async function createProfileCard(bannerUrl, avatarUrl, member) {
-    const canvas = createCanvas(900, 400);
+    // أبعاد الكانفاس مطابقة تماماً للنموذج المرفق
+    const canvas = createCanvas(1000, 600); 
     const ctx = canvas.getContext('2d');
     
-    // خلفية داكنة (نفس لون خلفية الصورة المرفقة)
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(0, 0, 900, 400);
+    // خلفية داكنة موحدة
+    ctx.fillStyle = '#0f0f0f';
+    ctx.fillRect(0, 0, 1000, 600);
     
-    // رسم البانر (بدون حواف جانبية ليطابق التصميم)
-    const bannerW = 900;
-    const bannerH = 220;
+    // 1. البانر: قص الحواف وتغطية المساحة العلوية
     const banner = await loadImage(bannerUrl);
-    drawImageCover(ctx, banner, 0, 0, bannerW, bannerH);
+    drawImageCover(ctx, banner, 0, 0, 1000, 350);
     
-    // إطار الأفاتار الدائري (موقع الأفاتار في صورتك)
-    const avatarSize = 130;
-    const avatarX = 40;
-    const avatarY = 220; 
-    
+    // 2. الأفاتار: الموقع الدقيق كما في صورتك
     ctx.save();
     ctx.beginPath();
-    ctx.arc(avatarX + avatarSize/2, avatarY + avatarSize/2, 65, 0, Math.PI * 2); 
+    ctx.arc(160, 420, 110, 0, Math.PI * 2);
     ctx.clip();
     const avatar = await loadImage(avatarUrl);
-    ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
+    ctx.drawImage(avatar, 50, 310, 220, 220);
     ctx.restore();
     
     const font = fs.existsSync(fontPath) ? '"MyCustomFont"' : 'sans-serif';
     
-    // الاسم والمعرف
+    // 3. النصوص: نفس حجم الخط الصغير في صورتك
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold 32px ${font}`;
-    ctx.fillText(member.user.username, 190, 270);
+    ctx.font = `bold 40px ${font}`;
+    ctx.fillText(member.user.username, 300, 430);
     
-    ctx.fillStyle = '#888888';
-    ctx.font = `18px ${font}`;
-    ctx.fillText('@' + member.user.username.toLowerCase(), 190, 300);
+    ctx.fillStyle = '#aaaaaa';
+    ctx.font = `24px ${font}`;
+    ctx.fillText('@' + member.user.username.toLowerCase(), 300, 470);
     
-    // الخط الفاصل
-    ctx.strokeStyle = '#333333';
-    ctx.lineWidth = 1;
+    // 4. الخط الفاصل
+    ctx.strokeStyle = '#222222';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(40, 340);
-    ctx.lineTo(860, 340);
+    ctx.moveTo(50, 530);
+    ctx.lineTo(950, 530);
     ctx.stroke();
     
-    // البيانات (MEMBER SINCE / JOINED SERVER)
-    ctx.fillStyle = '#777777';
-    ctx.font = `bold 12px ${font}`;
-    ctx.fillText('MEMBER SINCE', 40, 370);
-    ctx.fillText('JOINED SERVER', 500, 370);
+    // 5. التواريخ: توزيع مطابق
+    ctx.fillStyle = '#666666';
+    ctx.font = `bold 18px ${font}`;
+    ctx.fillText('MEMBER SINCE', 50, 570);
+    ctx.fillText('JOINED SERVER', 550, 570);
     
     ctx.fillStyle = '#ffffff';
-    ctx.font = `14px ${font}`;
-    ctx.fillText(member.user.createdAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}), 40, 390);
-    ctx.fillText(member.joinedAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}), 500, 390);
+    ctx.font = `20px ${font}`;
+    ctx.fillText(member.user.createdAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}), 50, 595);
+    ctx.fillText(member.joinedAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}), 550, 595);
     
     return new AttachmentBuilder(await canvas.encode('png'), { name: 'profile.png' });
 }
 
+// الكود الباقي للأوامر والربط (كما طلبت سابقاً):
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.content.startsWith('!design')) return;
     if (!message.member.roles.cache.has(ROLE_ID)) return message.reply('❌ ليس لديك الصلاحية.');
     if (message.attachments.size < 2) return message.reply('⚠️ يرجى إرفاق صورتين.');
     
     const targetChannel = client.channels.cache.get(TARGET_CHANNEL_ID);
-    if (!targetChannel) return message.reply('❌ الروم المحدد غير موجود!');
+    if (!targetChannel) return;
     
     const att = Array.from(message.attachments.values());
-    const data = { bannerUrl: att[0].url, avatarUrl: att[1].url };
-    designCache.set(message.author.id, data);
-    
     try {
-        const card = await createProfileCard(data.bannerUrl, data.avatarUrl, message.member);
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('try_btn').setLabel('Try').setEmoji(EMOJI_ID).setStyle(ButtonStyle.Secondary)
-        );
-        await targetChannel.send({ files: [card], components: [row] });
-        await message.reply('✅ تم إرسال التصميم للروم.');
+        const card = await createProfileCard(att[0].url, att[1].url, message.member);
+        await targetChannel.send({ files: [card] });
+        await message.reply('✅ تم إنشاء التصميم.');
     } catch (err) {
-        console.error(err);
-        message.reply('❌ حدث خطأ أثناء المعالجة.');
+        message.reply('❌ خطأ في التصميم.');
     }
-});
-
-client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isButton() || interaction.customId !== 'try_btn') return;
-    const data = designCache.get(interaction.user.id);
-    if (!data) return interaction.reply({ content: '❌ لا توجد بيانات.', ephemeral: true });
-    await interaction.reply({ content: `الصور الأصلية:\nالبنر: ${data.bannerUrl}\nالأفاتار: ${data.avatarUrl}`, ephemeral: true });
 });
 
 client.login(process.env.TOKEN);
