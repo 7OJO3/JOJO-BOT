@@ -12,7 +12,7 @@ if (fs.existsSync(fontPath)) {
     GlobalFonts.registerFromPath(fontPath, 'MyCustomFont');
     console.log('✅ تم تحميل الخط المخصص بنجاح.');
 } else {
-    console.warn('⚠️ تحذير: لم يتم العثور على font.ttf، سيتم استخدام الخط الافتراضي.');
+    console.warn('⚠️ تحذير: ملف font.ttf غير موجود. سيتم استخدام الخط الافتراضي.');
 }
 
 // --- 2. إعداد الخادم ---
@@ -66,33 +66,33 @@ client.once('ready', async () => {
     }
 });
 
-// --- 4. دالة الرسم (معدلة للحصول على المساحات والحواف المطلوبة) ---
+// --- 4. دالة الرسم (معدلة للحواف ومنع التمطط) ---
 async function createProfileCard(bannerUrl, avatarUrl, member) {
-    const canvas = createCanvas(900, 400); // حجم أكبر قليلاً لتناسب النسب
+    const canvas = createCanvas(900, 400); // زيادة العرض ليعطي توازناً أفضل
     const ctx = canvas.getContext('2d');
     
-    // الخلفية الأساسية (اللون اللي يظهر في الحواف)
+    // خلفية داكنة
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, 900, 400);
     
-    // رسم البانر مع "هوامش" (Padding)
-    const padding = 30; // الحواف المطلوبة
+    // رسم البانر مع "هوامش" (Padding) لمنع التمطط
+    const padding = 30; 
     const bannerW = 900 - (padding * 2);
     const bannerH = 200;
     
     const banner = await loadImage(bannerUrl);
+    // الرسم داخل الإطار المخصص يمنع التمطط ويترك الحواف السوداء
     ctx.drawImage(banner, padding, padding, bannerW, bannerH);
     
-    // رسم الأفاتار
+    // دائرة الأفاتار
     ctx.save();
     ctx.beginPath();
-    ctx.arc(100, 270, 65, 0, Math.PI * 2);
+    ctx.arc(100, 270, 65, 0, Math.PI * 2); 
     ctx.clip();
     const avatar = await loadImage(avatarUrl);
     ctx.drawImage(avatar, 35, 205, 130, 130);
     ctx.restore();
     
-    // الخطوط والنصوص
     const font = fs.existsSync(fontPath) ? '"MyCustomFont"' : 'sans-serif';
     
     ctx.fillStyle = '#ffffff';
@@ -137,6 +137,10 @@ client.on(Events.MessageCreate, async (message) => {
         return message.reply('⚠️ يرجى إرفاق صورتين (الأولى للبانر، الثانية للأفاتار).');
     }
     
+    // تحديد الروم المستهدف
+    const targetChannel = client.channels.cache.get(TARGET_CHANNEL_ID);
+    if (!targetChannel) return message.reply('❌ الروم المخصص (TARGET_CHANNEL_ID) غير موجود!');
+    
     const att = Array.from(message.attachments.values());
     const data = { bannerUrl: att[0].url, avatarUrl: att[1].url };
     designCache.set(message.author.id, data);
@@ -146,7 +150,10 @@ client.on(Events.MessageCreate, async (message) => {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('try_btn').setLabel('Try').setEmoji(EMOJI_ID).setStyle(ButtonStyle.Secondary)
         );
-        await message.channel.send({ files: [card], components: [row] });
+        
+        // الإرسال في الروم المحدد
+        await targetChannel.send({ files: [card], components: [row] });
+        await message.reply('✅ تم إنشاء التصميم وإرساله إلى الروم المخصص.');
     } catch (err) {
         console.error("❌ خطأ في إنشاء الكارد: ", err);
         message.reply('❌ حدث خطأ أثناء معالجة الصور.');
