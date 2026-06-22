@@ -75,4 +75,73 @@ async function createProfileCard(bannerUrl, avatarUrl, member) {
     ctx.fillText('JOINED SERVER', 550, 520);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = `1
+    ctx.font = `16px "${FONT_NAME}"`;
+    ctx.fillText(member.user.createdAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}), 50, 550);
+    ctx.fillText(member.joinedAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}), 550, 550);
+
+    return canvas;
+}
+
+client.once(Events.ClientReady, async (c) => {
+    client.user.setPresence({ activities: [{ name: 'JOJO’s Designs', type: ActivityType.Streaming, url: 'https://www.twitch.tv/discord' }], status: 'online' });
+    const vc = client.channels.cache.get(VOICE_CHANNEL_ID);
+    if (vc) joinVoiceChannel({ channelId: vc.id, guildId: vc.guild.id, adapterCreator: vc.guild.voiceAdapterCreator });
+});
+
+client.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot || !message.content.startsWith('!design') || isProcessing.has(message.author.id)) return;
+    if (!message.member.roles.cache.has(ROLE_ID)) return message.reply('❌ ليس لديك الصلاحية.');
+    if (message.attachments.size < 2) return message.reply('⚠️ يرجى إرفاق صورتين.');
+
+    isProcessing.add(message.author.id);
+    const targetChannel = client.channels.cache.get(TARGET_CHANNEL_ID);
+    
+    try {
+        const canvas = await createProfileCard(message.attachments.first().url, message.attachments.at(1).url, message.member);
+        const buffer = await canvas.encode('png');
+        const attachment = new AttachmentBuilder(buffer, { name: 'profile.png' });
+
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder().setCustomId('try_design').setLabel('Try').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('send_dm').setLabel('Send to DM').setStyle(ButtonStyle.Primary)
+            );
+
+        await targetChannel.send({ 
+            files: [attachment],
+            components: [row]
+        });
+        await message.reply('✅ تم إرسال تصميمك.');
+    } catch (err) {
+        console.error(err);
+        message.reply('❌ حدث خطأ أثناء المعالجة.');
+    } finally {
+        isProcessing.delete(message.author.id);
+    }
+});
+
+client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton()) return;
+
+    if (interaction.customId === 'try_design') {
+        await interaction.reply({ content: '🎨 أرسل الصورتين (البانر والأفاتار) مجدداً للتجربة!', ephemeral: true });
+    } else if (interaction.customId === 'send_dm') {
+        try {
+            const canvas = await createProfileCard(interaction.message.attachments.first().url, interaction.message.attachments.first().url, interaction.member);
+            const buffer = await canvas.encode('png');
+            
+            await interaction.user.send({ 
+                content: '📸 إليك تصميمك الذي طلبته:', 
+                files: [new AttachmentBuilder(buffer, { name: 'profile.png' })] 
+            });
+            await interaction.reply({ content: '✅ تم إرسال التصميم لخاصك!', ephemeral: true });
+        } catch (err) {
+            await interaction.reply({ 
+                content: 'تسوقمها؟ خاصك مقفل كيف تبيني ارسلك الافتارات؟ افتح الخاص يا وحش!', 
+                ephemeral: true 
+            });
+        }
+    }
+});
+
+client.login(process.env.TOKEN);
