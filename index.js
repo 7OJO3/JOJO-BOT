@@ -62,25 +62,24 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
     const canvas = createCanvas(1000, 600);
     const ctx = canvas.getContext('2d');
 
-    ctx.fillStyle = '#0f0f0f';
+    // --- الخلفية سوداء بالكامل ---
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, 1000, 600);
 
     const banner = await loadImage(bannerUrl);
     drawImageCover(ctx, banner, 40, 40, 920, 300); 
 
-    // --- تم تكبير الأفاتارات ---
-    const AVATAR_SIZE = 200; 
+    const AVATAR_SIZE = 180; // حجم مناسب
     const Y_AVATARS = 330; 
     const START_X = 60;
     
-    // دالة لرسم الأفاتار مع حواف سوداء
     async function drawAvatar(url, x, y, size) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
         ctx.fillStyle = '#000000';
         ctx.fill();
-        ctx.lineWidth = 10; // زيادة سمك الحافة لتتناسب مع الحجم
+        ctx.lineWidth = 8;
         ctx.strokeStyle = '#000000';
         ctx.stroke();
         ctx.clip();
@@ -89,11 +88,10 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
         ctx.restore();
     }
 
-    // 1. رسم الأفاتار الأول
     await drawAvatar(avatarUrls[0], START_X, Y_AVATARS, AVATAR_SIZE);
 
-    // 2. النصوص (تم إزاحتها قليلاً لتناسب الحجم الجديد)
-    const textStartX = START_X + AVATAR_SIZE + 20; 
+    // --- تقليص المسافة بين النص والأفاتار ---
+    const textStartX = START_X + AVATAR_SIZE + 15; 
     
     ctx.fillStyle = '#ffffff';
     ctx.font = `bold 40px "${FONT_NAME}"`;
@@ -101,17 +99,16 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
     
     ctx.fillStyle = '#aaaaaa';
     ctx.font = `20px "${FONT_NAME}"`;
-    ctx.fillText('@' + member.user.username.toLowerCase(), textStartX, 415);
+    ctx.fillText('@' + member.user.username.toLowerCase(), textStartX, 410);
 
-    // 3. رسم الأفاتارات الباقية
-    let currentX = textStartX + 180; 
-    const SPACING = 10; 
+    // --- تقليص المسافة بين الأفاتارات لضمان عدم الخروج من الإطار ---
+    let currentX = textStartX + 150; 
+    const SPACING = 5; 
     for (let i = 1; i < avatarUrls.length; i++) {
         await drawAvatar(avatarUrls[i], currentX, Y_AVATARS, AVATAR_SIZE);
         currentX += (AVATAR_SIZE + SPACING);
     }
 
-    // 4. التواريخ في الأسفل
     ctx.fillStyle = '#777777';
     ctx.font = `bold 14px "${FONT_NAME}"`;
     ctx.fillText('MEMBER SINCE', START_X, 550);
@@ -131,7 +128,7 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
 async function createDesignCard(bannerUrl, member) {
     const canvas = createCanvas(1000, 600);
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#0f0f0f';
+    ctx.fillStyle = '#000000'; // خلفية سوداء
     ctx.fillRect(0, 0, 1000, 600);
     const banner = await loadImage(bannerUrl);
     drawImageCover(ctx, banner, 40, 40, 920, 300);
