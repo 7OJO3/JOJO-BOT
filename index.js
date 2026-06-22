@@ -23,7 +23,9 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildVoiceStates] 
 });
 
-const TARGET_CHANNEL_ID = '1518670780911583283';
+// الرومات المطلوبة
+const DESIGN_CHANNEL_ID = '1501583456872829068';
+const MATCHING_CHANNEL_ID = '1518670780911583283';
 const VOICE_CHANNEL_ID = '1518127536834613360';
 const ROLE_ID = '1501374221992071348';
 const isProcessing = new Set();
@@ -86,7 +88,7 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
     const banner = await loadImage(bannerUrl);
     drawImageCover(ctx, banner, 40, 40, 920, 300); 
     
-    // رسم الأفاتارات (نبدأ من إحداثيات ثابتة للأفاتار الأول)
+    // رسم الأفاتارات
     await drawAvatars(ctx, avatarUrls, 60, 300, 150);
 
     // النصوص
@@ -102,20 +104,22 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
 }
 
 client.on(Events.MessageCreate, async (message) => {
-    // التحقق من البوت والرتبة
     if (message.author.bot || !message.member?.roles.cache.has(ROLE_ID) || isProcessing.has(message.author.id)) return;
 
+    let command = message.content.split(' ')[0];
     let count = 0;
-    if (message.content.startsWith('!design')) count = 1;
-    else if (message.content.startsWith('!Matching2')) count = 2;
-    else if (message.content.startsWith('!Matching3')) count = 3;
-    else if (message.content.startsWith('!Matching4')) count = 4;
+    let targetRoom = null;
+
+    if (command === '!design') { count = 1; targetRoom = DESIGN_CHANNEL_ID; }
+    else if (command === '!Matching2') { count = 2; targetRoom = MATCHING_CHANNEL_ID; }
+    else if (command === '!Matching3') { count = 3; targetRoom = MATCHING_CHANNEL_ID; }
+    else if (command === '!Matching4') { count = 4; targetRoom = MATCHING_CHANNEL_ID; }
     else return;
 
     if (message.attachments.size < (count + 1)) return;
 
     isProcessing.add(message.author.id);
-    const targetChannel = client.channels.cache.get(TARGET_CHANNEL_ID);
+    const targetChannel = client.channels.cache.get(targetRoom);
     
     try {
         const bannerUrl = message.attachments.first().url;
@@ -152,7 +156,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (!data) return interaction.reply({ content: '❌ حدث خطأ، لم أجد الصور الأصلية!', ephemeral: true });
 
     if (interaction.customId === 'try_design') {
-        // إرسال الصور الأصلية كملفات للتجربة
         await interaction.reply({ 
             content: 'خذ خذ وتوكل:', 
             files: [data.banner, ...data.avatars], 
@@ -160,14 +163,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
     } else if (interaction.customId === 'send_dm') {
         try {
-            // محاولة إرسال الصور للخاص
             await interaction.user.send({ 
                 content: 'خذ خذ بس وفارق:', 
                 files: [data.banner, ...data.avatars] 
             });
             await interaction.reply({ content: '✅ تم الإرسال للخاص!', ephemeral: true });
         } catch (err) {
-            // في حال كان الخاص مغلقاً
             await interaction.reply({ 
                 content: 'تسوقمها؟ كيف برسل لك الافتار وانت مسكر خاصك يخوي؟ بالتخاطر؟ لالا بالتخاطر', 
                 ephemeral: true 
