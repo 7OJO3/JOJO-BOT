@@ -68,14 +68,16 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
     const banner = await loadImage(bannerUrl);
     drawImageCover(ctx, banner, 40, 40, 920, 300); 
 
-    // إعدادات الحجم والموقع
-    const AVATAR_SIZE = 150; 
-    const Y_POS = 350;
+    // إعدادات ديناميكية لضمان عدم الخروج عن الإطار
+    const count = avatarUrls.length;
+    const AVATAR_SIZE = count > 3 ? 120 : 140; // تصغير الحجم إذا كان العدد 4 أفاتارات
     const SPACING = 20;
+    const START_X = 60;
+    const Y_POS = 350;
     
     // 1. رسم جميع الأفاتارات في سطر واحد على اليسار
-    for (let i = 0; i < avatarUrls.length; i++) {
-        const x = 60 + (i * (AVATAR_SIZE + SPACING));
+    for (let i = 0; i < count; i++) {
+        const x = START_X + (i * (AVATAR_SIZE + SPACING));
         
         ctx.save();
         ctx.beginPath();
@@ -89,8 +91,8 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
         ctx.restore();
     }
 
-    // 2. حساب موقع النصوص (بعد آخر أفاتار مرسوم)
-    const lastAvatarX = 60 + ((avatarUrls.length - 1) * (AVATAR_SIZE + SPACING));
+    // 2. حساب موقع النصوص (نبدأ بعد آخر أفاتار مرسوم)
+    const lastAvatarX = START_X + ((count - 1) * (AVATAR_SIZE + SPACING));
     const textStartX = lastAvatarX + AVATAR_SIZE + 40; 
 
     // رسم الاسم واليوزر
