@@ -62,14 +62,14 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
     const canvas = createCanvas(1000, 600);
     const ctx = canvas.getContext('2d');
 
-    // --- الخلفية سوداء بالكامل ---
+    // الخلفية سوداء
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, 1000, 600);
 
     const banner = await loadImage(bannerUrl);
     drawImageCover(ctx, banner, 40, 40, 920, 300); 
 
-    const AVATAR_SIZE = 180; 
+    const AVATAR_SIZE = 180;
     const Y_AVATARS = 330; 
     const START_X = 60;
     
@@ -126,8 +126,8 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
 async function createDesignCard(bannerUrl, member) {
     const canvas = createCanvas(1000, 600);
     const ctx = canvas.getContext('2d');
-    // --- تم تعديل خلفية الـ design card لتصبح سوداء ---
-    ctx.fillStyle = '#000000'; 
+    // خلفية سوداء لأمر التصميم
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, 1000, 600);
     const banner = await loadImage(bannerUrl);
     drawImageCover(ctx, banner, 40, 40, 920, 300);
@@ -173,6 +173,7 @@ client.on(Events.MessageCreate, async (message) => {
                 files: [attachment],
                 components: [row]
             });
+            // حفظ البيانات في الذاكرة
             designCache.set(sentMessage.id, { banner: bannerUrl, avatars: avatarUrls });
         }
         await message.delete().catch(() => {});
@@ -187,7 +188,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isButton()) return;
     
     const data = designCache.get(interaction.message.id);
-    if (!data) return interaction.reply({ content: '❌ حدث خطأ، لم أجد الصور الأصلية!', ephemeral: true });
+    if (!data) return interaction.reply({ content: '❌ حدث خطأ: لا يمكن العثور على الصور في الذاكرة (ربما تمت إعادة تشغيل البوت). يرجى طلب التصميم مجدداً.', ephemeral: true });
 
     if (interaction.customId === 'try_design') {
         await interaction.reply({ 
