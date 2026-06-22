@@ -28,7 +28,7 @@ const ROLE_ID = '1501374221992071348';
 const MY_USER_ID = '890586243346354216'; 
 const designCache = new Map();
 
-// دالة قص الصورة (Cover) لمنع التمطط
+// دالة قص الصورة (Cover)
 function drawImageCover(ctx, img, x, y, width, height) {
     const imgRatio = img.width / img.height;
     const destRatio = width / height;
@@ -52,51 +52,58 @@ async function createProfileCard(bannerUrl, avatarUrl, member) {
     const canvas = createCanvas(900, 400);
     const ctx = canvas.getContext('2d');
     
+    // خلفية داكنة (نفس لون خلفية الصورة المرفقة)
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, 900, 400);
     
-    // رسم البانر باستخدام دالة القص (Cover) بدلاً من التمطط
-    const padding = 30; 
-    const bannerW = 900 - (padding * 2);
-    const bannerH = 200;
+    // رسم البانر (بدون حواف جانبية ليطابق التصميم)
+    const bannerW = 900;
+    const bannerH = 220;
     const banner = await loadImage(bannerUrl);
-    drawImageCover(ctx, banner, padding, padding, bannerW, bannerH);
+    drawImageCover(ctx, banner, 0, 0, bannerW, bannerH);
     
-    // دائرة الأفاتار
+    // إطار الأفاتار الدائري (موقع الأفاتار في صورتك)
+    const avatarSize = 130;
+    const avatarX = 40;
+    const avatarY = 220; 
+    
     ctx.save();
     ctx.beginPath();
-    ctx.arc(100, 270, 65, 0, Math.PI * 2); 
+    ctx.arc(avatarX + avatarSize/2, avatarY + avatarSize/2, 65, 0, Math.PI * 2); 
     ctx.clip();
     const avatar = await loadImage(avatarUrl);
-    ctx.drawImage(avatar, 35, 205, 130, 130);
+    ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
     
     const font = fs.existsSync(fontPath) ? '"MyCustomFont"' : 'sans-serif';
     
+    // الاسم والمعرف
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold 28px ${font}`;
-    ctx.fillText(member.user.username, 190, 280);
+    ctx.font = `bold 32px ${font}`;
+    ctx.fillText(member.user.username, 190, 270);
     
     ctx.fillStyle = '#888888';
-    ctx.font = `16px ${font}`;
-    ctx.fillText('@' + member.user.username.toLowerCase(), 190, 310);
+    ctx.font = `18px ${font}`;
+    ctx.fillText('@' + member.user.username.toLowerCase(), 190, 300);
     
+    // الخط الفاصل
     ctx.strokeStyle = '#333333';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(padding, 350);
-    ctx.lineTo(870, 350);
+    ctx.moveTo(40, 340);
+    ctx.lineTo(860, 340);
     ctx.stroke();
     
+    // البيانات (MEMBER SINCE / JOINED SERVER)
     ctx.fillStyle = '#777777';
     ctx.font = `bold 12px ${font}`;
-    ctx.fillText('MEMBER SINCE', padding, 380);
-    ctx.fillText('JOINED SERVER', 500, 380);
+    ctx.fillText('MEMBER SINCE', 40, 370);
+    ctx.fillText('JOINED SERVER', 500, 370);
     
     ctx.fillStyle = '#ffffff';
     ctx.font = `14px ${font}`;
-    ctx.fillText(member.user.createdAt.toLocaleDateString('en-US'), padding, 395);
-    ctx.fillText(member.joinedAt.toLocaleDateString('en-US'), 500, 395);
+    ctx.fillText(member.user.createdAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}), 40, 390);
+    ctx.fillText(member.joinedAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}), 500, 390);
     
     return new AttachmentBuilder(await canvas.encode('png'), { name: 'profile.png' });
 }
