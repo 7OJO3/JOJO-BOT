@@ -55,7 +55,6 @@ function drawImageCover(ctx, img, x, y, width, height) {
     ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, width, height);
 }
 
-// --- الإحداثيات المحدثة لضبط الخط ---
 async function createProfileCard(bannerUrl, avatarUrl, member) {
     const canvas = createCanvas(1000, 600);
     const ctx = canvas.getContext('2d');
@@ -79,7 +78,7 @@ async function createProfileCard(bannerUrl, avatarUrl, member) {
     ctx.drawImage(avatar, 50, 260, 180, 180);
     ctx.restore();
 
-    // 4. النصوص (تم إنزالها للأسفل لتتوسط الأفاتار)
+    // 4. النصوص (تم ضبط الإحداثيات لتتوسط المكان كما في صورتك)
     ctx.fillStyle = '#ffffff';
     ctx.font = `bold 40px "${FONT_NAME}"`;
     ctx.fillText(member.user.username, 260, 380);
@@ -150,15 +149,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const data = designCache.get(interaction.message.id);
     if (!data) return interaction.reply({ content: '❌ حدث خطأ، لم أجد الصور الأصلية!', ephemeral: true });
 
-    // إرسال الصور الأصلية مباشرة كملفات (Files)
-    try {
+    if (interaction.customId === 'try_design') {
+        // إرسال الصور الأصلية كملفات للتجربة
         await interaction.reply({ 
-            content: '📸 إليك الصور الأصلية التي تم التصميم بها:', 
+            content: '🎨 إليك الصور الأصلية للتجربة:', 
             files: [data.banner, data.avatar], 
             ephemeral: true 
         });
-    } catch (err) {
-        console.error(err);
+    } else if (interaction.customId === 'send_dm') {
+        try {
+            // محاولة إرسال الصور للخاص
+            await interaction.user.send({ 
+                content: 'خذ خذ بس وفارق:', 
+                files: [data.banner, data.avatar] 
+            });
+            await interaction.reply({ content: '✅ تم الإرسال للخاص!', ephemeral: true });
+        } catch (err) {
+            // في حال كان الخاص مغلقاً
+            await interaction.reply({ 
+                content: 'تسوقمها؟ كيف برسل لك الافتار وانت مسكر خاصك يخوي؟ بالتخاطر؟ لالا بالتخاطر', 
+                ephemeral: true 
+            });
+        }
     }
 });
 
