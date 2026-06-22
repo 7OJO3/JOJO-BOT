@@ -101,4 +101,67 @@ async function createProfileCard(bannerUrl, avatarUrl, member) {
     // 6. التواريخ
     ctx.fillStyle = '#777777';
     ctx.font = `bold 12px "${FONT_NAME}"`;
-    ctx.fillText
+    ctx.fillText('MEMBER SINCE', 50, 520);
+    ctx.fillText('JOINED SERVER', 550, 520);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `18px "${FONT_NAME}"`;
+    ctx.fillText(member.user.createdAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}), 50, 550);
+    ctx.fillText(member.joinedAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}), 550, 550);
+
+    return canvas;
+}
+
+client.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot || !message.content.startsWith('!design') || isProcessing.has(message.author.id)) return;
+    if (!message.member.roles.cache.has(ROLE_ID)) return;
+    if (message.attachments.size < 2) return;
+
+    isProcessing.add(message.author.id);
+    const targetChannel = client.channels.cache.get(TARGET_CHANNEL_ID);
+    
+    try {
+        const canvas = await createProfileCard(message.attachments.first().url, message.attachments.at(1).url, message.member);
+        const buffer = await canvas.encode('png');
+        const attachment = new AttachmentBuilder(buffer, { name: 'profile.png' });
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('try_design').setLabel('Try').setStyle(ButtonStyle.Secondary).setEmoji('1518609977386733678'),
+            new ButtonBuilder().setCustomId('send_dm').setLabel('DM').setStyle(ButtonStyle.Secondary).setEmoji('1518609827599880253')
+        );
+
+        if (targetChannel) {
+            await targetChannel.send({ 
+                files: [attachment],
+                components: [row]
+            });
+        }
+        await message.delete().catch(() => {});
+    } catch (err) {
+        console.error(err);
+    } finally {
+        isProcessing.delete(message.author.id);
+    }
+});
+
+client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton()) return;
+    if (interaction.customId === 'try_design') {
+        await interaction.reply({ content: '🎨 أرسل الصورتين هنا للتجربة!', ephemeral: true });
+    } else if (interaction.customId === 'send_dm') {
+        try {
+            // استخدام نفس الصور المرفقة في الرسالة الأصلية
+            const canvas = await createProfileCard(interaction.message.attachments.first().url, interaction.message.attachments.first().url, interaction.member);
+            const buffer = await canvas.encode('png');
+            await interaction.user.send({ 
+                content: '📸 إليك تصميمك:', 
+                files: [new AttachmentBuilder(buffer, { name: 'profile.png' })] 
+            });
+            await interaction.reply({ content: '✅ تم الإرسال للخاص!', ephemeral: true });
+        } catch (err) {
+            await interaction.reply({ content: '❌ تسوقمها؟كيف برسلك وانت مسكر الخاص!', ephemeral: true });
+        }
+    }
+});
+
+client.login(process.env.TOKEN);
