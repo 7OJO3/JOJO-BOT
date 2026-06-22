@@ -82,7 +82,7 @@ async function createProfileCard(bannerUrl, avatarUrl, member) {
     return new AttachmentBuilder(await canvas.encode('png'), { name: 'profile.png' });
 }
 
-client.once('ready', async () => {
+client.once(Events.ClientReady, async (c) => {
     client.user.setPresence({ activities: [{ name: 'JOJO’s Designs', type: ActivityType.Streaming, url: 'https://www.twitch.tv/discord' }], status: 'online' });
     const vc = client.channels.cache.get(VOICE_CHANNEL_ID);
     if (vc) joinVoiceChannel({ channelId: vc.id, guildId: vc.guild.id, adapterCreator: vc.guild.voiceAdapterCreator });
@@ -95,30 +95,3 @@ client.on(Events.MessageCreate, async (message) => {
 
     isProcessing.add(message.author.id);
     const targetChannel = client.channels.cache.get(TARGET_CHANNEL_ID);
-    
-    try {
-        const card = await createProfileCard(message.attachments.first().url, message.attachments.at(1).url, message.member);
-        
-        // تعريف زر Try
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('try_design')
-                    .setLabel('Try')
-                    .setStyle(ButtonStyle.Secondary)
-            );
-
-        await targetChannel.send({ 
-            files: [card],
-            components: [row]
-        });
-        await message.reply('✅ تم إرسال تصميمك.');
-    } catch (err) {
-        console.error(err);
-        message.reply('❌ حدث خطأ أثناء المعالجة.');
-    } finally {
-        isProcessing.delete(message.author.id);
-    }
-});
-
-client.login(process.env.TOKEN);
