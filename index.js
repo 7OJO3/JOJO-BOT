@@ -68,45 +68,41 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
     const banner = await loadImage(bannerUrl);
     drawImageCover(ctx, banner, 40, 40, 920, 300); 
 
-    // إعدادات التنسيق
-    const AVATAR_SIZE = 140; 
-    const Y_POS = 350; 
-    const SPACING = 20; 
-    const START_X = 60; 
+    // إعدادات التنسيق الجديدة
+    const MAIN_AVATAR_SIZE = 220; 
+    const SMALL_AVATAR_SIZE = 140;
+    const Y_MAIN = 340;
+    const Y_SMALL = 380;
+    const START_X = 60;
+    const SPACING = 20;
     
-    // 1. رسم جميع الأفاتارات
-    for (let i = 0; i < avatarUrls.length; i++) {
-        const x = START_X + (i * (AVATAR_SIZE + SPACING));
-        
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(x + (AVATAR_SIZE / 2), Y_POS + (AVATAR_SIZE / 2), AVATAR_SIZE / 2, 0, Math.PI * 2);
-        ctx.fillStyle = '#0f0f0f';
-        ctx.fill();
-        ctx.clip();
-        
-        const avatar = await loadImage(avatarUrls[i]);
-        ctx.drawImage(avatar, x, Y_POS, AVATAR_SIZE, AVATAR_SIZE);
-        ctx.restore();
-    }
+    // 1. رسم الأفاتار الأول (كبير)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(START_X + (MAIN_AVATAR_SIZE / 2), Y_MAIN + (MAIN_AVATAR_SIZE / 2), MAIN_AVATAR_SIZE / 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#0f0f0f';
+    ctx.fill();
+    ctx.clip();
+    const mainAvatar = await loadImage(avatarUrls[0]);
+    ctx.drawImage(mainAvatar, START_X, Y_MAIN, MAIN_AVATAR_SIZE, MAIN_AVATAR_SIZE);
+    ctx.restore();
 
-    // 2. موقع النصوص الثابت (دائماً بجانب الأفاتار الأول بمسافة ثابتة)
-    const textStartX = START_X + AVATAR_SIZE + 30; 
+    // 2. النصوص الثابتة بجانب الأفاتار الأول
+    const textStartX = START_X + MAIN_AVATAR_SIZE + 30;
 
-    // رسم الاسم واليوزر
     ctx.fillStyle = '#ffffff';
     ctx.font = `bold 40px "${FONT_NAME}"`;
-    ctx.fillText(member.user.username, textStartX, 390);
+    ctx.fillText(member.user.username, textStartX, 410);
     
     ctx.fillStyle = '#aaaaaa';
     ctx.font = `20px "${FONT_NAME}"`;
-    ctx.fillText('@' + member.user.username.toLowerCase(), textStartX, 420);
+    ctx.fillText('@' + member.user.username.toLowerCase(), textStartX, 440);
 
-    // 3. التواريخ تحت النصوص في مكان ثابت
+    // 3. التواريخ في مكان ثابت
     ctx.fillStyle = '#777777';
     ctx.font = `bold 14px "${FONT_NAME}"`;
-    ctx.fillText('MEMBER SINCE', textStartX, 480);
-    ctx.fillText('JOINED SERVER', textStartX + 180, 480);
+    ctx.fillText('MEMBER SINCE', textStartX, 500);
+    ctx.fillText('JOINED SERVER', textStartX + 180, 500);
 
     ctx.fillStyle = '#ffffff';
     ctx.font = `20px "${FONT_NAME}"`;
@@ -114,8 +110,26 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
     const memberSince = member.user.createdAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
     const joinedServer = member.joinedAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
     
-    ctx.fillText(memberSince, textStartX, 510);
-    ctx.fillText(joinedServer, textStartX + 180, 510);
+    ctx.fillText(memberSince, textStartX, 530);
+    ctx.fillText(joinedServer, textStartX + 180, 530);
+
+    // 4. رسم الأفاتارات الإضافية (صغيرة) بجانب بعضها
+    for (let i = 1; i < avatarUrls.length; i++) {
+        const x = textStartX + ((i - 1) * (SMALL_AVATAR_SIZE + SPACING));
+        // تأكد من عدم خروجها عن حدود الكانفاس
+        if (x + SMALL_AVATAR_SIZE > 950) break; 
+        
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x + (SMALL_AVATAR_SIZE / 2), Y_SMALL + (SMALL_AVATAR_SIZE / 2), SMALL_AVATAR_SIZE / 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f0f0f';
+        ctx.fill();
+        ctx.clip();
+        
+        const avatar = await loadImage(avatarUrls[i]);
+        ctx.drawImage(avatar, x, Y_SMALL, SMALL_AVATAR_SIZE, SMALL_AVATAR_SIZE);
+        ctx.restore();
+    }
 
     return canvas;
 }
