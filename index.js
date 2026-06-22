@@ -58,8 +58,8 @@ function drawImageCover(ctx, img, x, y, width, height) {
     ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, width, height);
 }
 
-// دالة رسم الأفاتارات (معدلة لتقبل إزاحة X مخصصة)
-async function drawAvatars(ctx, avatarUrls, startX, y, size = 200) {
+// دالة رسم الأفاتارات (معدلة لتقبل إزاحة X مخصصة وحجم مخصص)
+async function drawAvatars(ctx, avatarUrls, startX, y, size) {
     for (let i = 0; i < avatarUrls.length; i++) {
         ctx.save();
         ctx.beginPath();
@@ -87,34 +87,35 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
     const banner = await loadImage(bannerUrl);
     drawImageCover(ctx, banner, 40, 40, 920, 300); 
     
-    const AVATAR_SIZE = 200;
-    const Y_POS = 320;
+    const AVATAR_SIZE = 160; // تم ضبط الحجم لضمان عدم الخروج عن الإطار
+    const Y_POS = 350;
 
-    // 1. رسم الأفاتار الأول
+    // 1. رسم الأفاتار الأول فقط
     await drawAvatars(ctx, [avatarUrls[0]], 60, Y_POS, AVATAR_SIZE);
 
-    // 2. حساب مكان النصوص (بعد الأفاتار الأول)
-    const textStartX = 60 + AVATAR_SIZE + 30;
+    // 2. حساب مكان النصوص (بداية النصوص بعد الأفاتار الأول)
+    const textStartX = 60 + AVATAR_SIZE + 40;
 
     ctx.fillStyle = '#ffffff';
     ctx.font = `bold 40px "${FONT_NAME}"`;
-    ctx.fillText(member.user.username, textStartX, 400);
+    ctx.fillText(member.user.username, textStartX, 410);
     
     ctx.fillStyle = '#aaaaaa';
     ctx.font = `20px "${FONT_NAME}"`;
     ctx.fillText('@' + member.user.username.toLowerCase(), textStartX, 440);
 
-    // 3. رسم باقي الأفاتارات بعد النصوص (إزاحة إضافية)
+    // 3. رسم باقي الأفاتارات بعد النصوص
     const remainingAvatars = avatarUrls.slice(1);
     if (remainingAvatars.length > 0) {
-        await drawAvatars(ctx, remainingAvatars, textStartX + 250, Y_POS, AVATAR_SIZE);
+        // نضع مسافة إضافية للأفاتارات التالية (280 بكسل بعد النصوص)
+        await drawAvatars(ctx, remainingAvatars, textStartX + 280, Y_POS, AVATAR_SIZE);
     }
 
-    // 4. التواريخ (في الأسفل)
+    // 4. التواريخ في الأسفل
     ctx.fillStyle = '#777777';
     ctx.font = `bold 12px "${FONT_NAME}"`;
-    ctx.fillText('MEMBER SINCE', 60, 560);
-    ctx.fillText('JOINED SERVER', 300, 560);
+    ctx.fillText('MEMBER SINCE', textStartX, 510);
+    ctx.fillText('JOINED SERVER', textStartX + 200, 510);
 
     ctx.fillStyle = '#ffffff';
     ctx.font = `18px "${FONT_NAME}"`;
@@ -122,8 +123,8 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
     const memberSince = member.user.createdAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
     const joinedServer = member.joinedAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
     
-    ctx.fillText(memberSince, 60, 585);
-    ctx.fillText(joinedServer, 300, 585);
+    ctx.fillText(memberSince, textStartX, 540);
+    ctx.fillText(joinedServer, textStartX + 200, 540);
 
     return canvas;
 }
