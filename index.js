@@ -17,8 +17,9 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildVoiceStates] 
 });
 
-const TARGET_CHANNEL_ID = '1501583456872829068';
-const VOICE_CHANNEL_ID = '1518127536834613360';
+// الرومات المطلوبة
+const PROFILE_CHANNEL_ID = '1501583456872829068'; // روم الصور
+const BUTTON_CHANNEL_ID = '1501583456872829068'; // روم الأزرار
 const ROLE_ID = '1501374221992071348';
 const isProcessing = new Set();
 
@@ -70,8 +71,8 @@ async function createProfileCard(bannerUrl, avatarUrl, member) {
 
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.content.startsWith('!design') || isProcessing.has(message.author.id)) return;
-    if (!message.member.roles.cache.has(ROLE_ID)) return message.reply('❌ ليس لديك الصلاحية.');
-    if (message.attachments.size < 2) return message.reply('⚠️ يرجى إرفاق صورتين.');
+    if (!message.member.roles.cache.has(ROLE_ID)) return;
+    if (message.attachments.size < 2) return;
 
     isProcessing.add(message.author.id);
     try {
@@ -79,23 +80,41 @@ client.on(Events.MessageCreate, async (message) => {
         const buffer = await canvas.encode('png');
         const attachment = new AttachmentBuilder(buffer, { name: 'profile.png' });
 
+        // إرسال الصورة لروم البروفايلات
+        const profileChannel = client.channels.cache.get(PROFILE_CHANNEL_ID);
+        if (profileChannel) await profileChannel.send({ files: [attachment] });
+
+        // إرسال الأزرار لروم الأزرار
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('try_design').setLabel('Try').setStyle(ButtonStyle.Secondary).setEmoji('1518609977386733678'),
-            new ButtonBuilder().setCustomId('send_dm').setLabel('DM').setStyle(ButtonStyle.Secondary).setEmoji('1518609977386733678')
+            new ButtonBuilder().setCustomId('send_dm').setLabel('DM').setStyle(ButtonStyle.Secondary).setEmoji('1518609827599880253')
         );
 
-        // إرسال الصورة والأزرار معاً في نفس الرسالة (الطريقة الأكثر استقراراً)
-        await message.channel.send({ 
-            files: [attachment], 
-            components: [row] 
-        });
+        const buttonChannel = client.channels.cache.get(BUTTON_CHANNEL_ID);
+        if (buttonChannel) await buttonChannel.send({ components: [row] });
         
-        await message.reply('✅ تم إنشاء تصميمك بنجاح.');
+        // مسح رسالة المستخدم ليكون العمل صامتاً تماماً
+        await message.delete().catch(() => {});
     } catch (err) {
         console.error(err);
-        message.reply('❌ حدث خطأ أثناء معالجة التصميم.');
     } finally {
         isProcessing.delete(message.author.id);
+    }
+});
+
+client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton()) return;
+    if (interaction.customId === 'try_design') {
+        await interaction.reply({ content: '🎨 أرسل الصورتين مجدداً هنا للتجربة!', ephemeral: true });
+    } else if (interaction.customId === 'send_dm') {
+        try {
+            const canvas = await createProfileCard(interaction.message.attachments.first()?.url || 'https://via.placeholder.com/150', 'https://via.placeholder.com/150', interaction.member);
+            const buffer = await canvas.encode('png');
+            await interaction.user.send({ files: [new AttachmentBuilder(buffer, { name: 'profile.png' })] });
+            await interaction.reply({ content: '✅ تم الإرسال للخاص!', ephemeral: true });
+        } catch (err) {
+            await interaction.reply({ content: '❌ افتح الخاص يا وحش!', ephemeral: true });
+        }
     }
 });
 
