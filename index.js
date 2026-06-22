@@ -73,6 +73,7 @@ async function createUnifiedCard(bannerUrl, avatarUrls, member) {
     const AVATAR_SIZE = 180;
     const Y_AVATARS = 330; 
     const START_X = 60;
+    const SPACING = 15;
     
     async function drawAvatar(url, x, y, size) {
         ctx.save();
@@ -89,14 +90,11 @@ async function createUnifiedCard(bannerUrl, avatarUrls, member) {
         ctx.restore();
     }
 
-    // رسم الأفاتارات بناءً على عددها
-    for (let i = 0; i < avatarUrls.length; i++) {
-        let xPos = START_X + (i * (AVATAR_SIZE + 10));
-        await drawAvatar(avatarUrls[i], xPos, Y_AVATARS, AVATAR_SIZE);
-    }
+    // 1. رسم الأفاتار الأول فقط
+    await drawAvatar(avatarUrls[0], START_X, Y_AVATARS, AVATAR_SIZE);
 
-    const textStartX = START_X + (avatarUrls.length * (AVATAR_SIZE + 10)) + 15; 
-    
+    // 2. رسم النص (الاسم واليوزر) بجانب الأفاتار الأول
+    const textStartX = START_X + AVATAR_SIZE + 20;
     ctx.fillStyle = '#ffffff';
     ctx.font = `bold 40px "${FONT_NAME}"`;
     ctx.fillText(member.user.username, textStartX, 380);
@@ -104,6 +102,13 @@ async function createUnifiedCard(bannerUrl, avatarUrls, member) {
     ctx.fillStyle = '#aaaaaa';
     ctx.font = `20px "${FONT_NAME}"`;
     ctx.fillText('@' + member.user.username.toLowerCase(), textStartX, 410);
+
+    // 3. رسم بقية الأفاتارات بعد النص
+    let currentX = textStartX + 200; 
+    for (let i = 1; i < avatarUrls.length; i++) {
+        await drawAvatar(avatarUrls[i], currentX, Y_AVATARS, AVATAR_SIZE);
+        currentX += (AVATAR_SIZE + SPACING);
+    }
 
     ctx.fillStyle = '#777777';
     ctx.font = `bold 14px "${FONT_NAME}"`;
@@ -144,7 +149,6 @@ client.on(Events.MessageCreate, async (message) => {
         const avatarUrls = [];
         for(let i = 1; i <= count; i++) avatarUrls.push(message.attachments.at(i).url);
 
-        // استخدام الدالة الموحدة لكل الأوامر
         const canvas = await createUnifiedCard(bannerUrl, avatarUrls, message.member);
             
         const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'profile.png' });
