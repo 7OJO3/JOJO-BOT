@@ -10,9 +10,6 @@ const fs = require('fs');
 const fontPath = path.join(__dirname, 'font.ttf');
 if (fs.existsSync(fontPath)) {
     GlobalFonts.registerFromPath(fontPath, 'MyCustomFont');
-    console.log('✅ تم تحميل الخط المخصص بنجاح.');
-} else {
-    console.warn('⚠️ تحذير: ملف font.ttf غير موجود. سيتم استخدام الخط الافتراضي.');
 }
 
 // --- 2. إعداد الخادم ---
@@ -20,15 +17,8 @@ const app = express();
 app.get('/', (req, res) => res.send('Bot is running!'));
 app.listen(process.env.PORT || 3000);
 
-// --- 3. إعداد البوت ---
 const client = new Client({ 
-    intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent, 
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildVoiceStates
-    ] 
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildVoiceStates] 
 });
 
 const TARGET_CHANNEL_ID = '1501583456872829068';
@@ -38,51 +28,39 @@ const ROLE_ID = '1501374221992071348';
 const MY_USER_ID = '890586243346354216'; 
 const designCache = new Map();
 
-client.once('ready', async () => {
-    client.user.setPresence({
-        activities: [{ name: 'JOJO’s Designs', type: ActivityType.Streaming, url: 'https://www.twitch.tv/discord' }],
-        status: 'online'
-    });
-    
-    console.log('✅ البوت متصل، جاري تأمين الروم...');
-    
-    const guild = client.guilds.cache.first();
-    if (guild) {
-        try {
-            const myUser = await guild.members.fetch(MY_USER_ID).catch(() => null);
-            const vc = guild.channels.cache.get(VOICE_CHANNEL_ID);
-            
-            if (vc) {
-                await vc.permissionOverwrites.set([
-                    { id: guild.id, deny: [PermissionsBitField.Flags.Connect], allow: [PermissionsBitField.Flags.ViewChannel] },
-                    { id: client.user.id, allow: [PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.ViewChannel] },
-                    ...(myUser ? [{ id: myUser.id, allow: [PermissionsBitField.Flags.Connect, PermissionsBitField.Flags.ViewChannel] }] : [])
-                ]);
+// دالة قص الصورة (Cover) لمنع التمطط
+function drawImageCover(ctx, img, x, y, width, height) {
+    const imgRatio = img.width / img.height;
+    const destRatio = width / height;
+    let sWidth, sHeight, sx, sy;
 
-                joinVoiceChannel({ channelId: vc.id, guildId: vc.guild.id, adapterCreator: vc.guild.voiceAdapterCreator });
-                console.log('🔒 تم تأمين الروم ودخول البوت.');
-            }
-        } catch (err) { console.error("❌ خطأ أثناء تأمين الروم: ", err); }
+    if (imgRatio > destRatio) {
+        sWidth = img.height * destRatio;
+        sHeight = img.height;
+        sx = (img.width - sWidth) / 2;
+        sy = 0;
+    } else {
+        sWidth = img.width;
+        sHeight = img.width / destRatio;
+        sx = 0;
+        sy = (img.height - sHeight) / 2;
     }
-});
+    ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, width, height);
+}
 
-// --- 4. دالة الرسم (معدلة للحواف ومنع التمطط) ---
 async function createProfileCard(bannerUrl, avatarUrl, member) {
-    const canvas = createCanvas(900, 400); // زيادة العرض ليعطي توازناً أفضل
+    const canvas = createCanvas(900, 400);
     const ctx = canvas.getContext('2d');
     
-    // خلفية داكنة
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, 900, 400);
     
-    // رسم البانر مع "هوامش" (Padding) لمنع التمطط
+    // رسم البانر باستخدام دالة القص (Cover) بدلاً من التمطط
     const padding = 30; 
     const bannerW = 900 - (padding * 2);
     const bannerH = 200;
-    
     const banner = await loadImage(bannerUrl);
-    // الرسم داخل الإطار المخصص يمنع التمطط ويترك الحواف السوداء
-    ctx.drawImage(banner, padding, padding, bannerW, bannerH);
+    drawImageCover(ctx, banner, padding, padding, bannerW, bannerH);
     
     // دائرة الأفاتار
     ctx.save();
@@ -103,7 +81,6 @@ async function createProfileCard(bannerUrl, avatarUrl, member) {
     ctx.font = `16px ${font}`;
     ctx.fillText('@' + member.user.username.toLowerCase(), 190, 310);
     
-    // الخط الفاصل
     ctx.strokeStyle = '#333333';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -111,7 +88,6 @@ async function createProfileCard(bannerUrl, avatarUrl, member) {
     ctx.lineTo(870, 350);
     ctx.stroke();
     
-    // التواريخ
     ctx.fillStyle = '#777777';
     ctx.font = `bold 12px ${font}`;
     ctx.fillText('MEMBER SINCE', padding, 380);
@@ -125,21 +101,13 @@ async function createProfileCard(bannerUrl, avatarUrl, member) {
     return new AttachmentBuilder(await canvas.encode('png'), { name: 'profile.png' });
 }
 
-// --- 5. التعامل مع الأوامر ---
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.content.startsWith('!design')) return;
+    if (!message.member.roles.cache.has(ROLE_ID)) return message.reply('❌ ليس لديك الصلاحية.');
+    if (message.attachments.size < 2) return message.reply('⚠️ يرجى إرفاق صورتين.');
     
-    if (!message.member.roles.cache.has(ROLE_ID)) {
-        return message.reply('❌ ليس لديك الصلاحية لاستخدام هذا الأمر.');
-    }
-    
-    if (message.attachments.size < 2) {
-        return message.reply('⚠️ يرجى إرفاق صورتين (الأولى للبانر، الثانية للأفاتار).');
-    }
-    
-    // تحديد الروم المستهدف
     const targetChannel = client.channels.cache.get(TARGET_CHANNEL_ID);
-    if (!targetChannel) return message.reply('❌ الروم المخصص (TARGET_CHANNEL_ID) غير موجود!');
+    if (!targetChannel) return message.reply('❌ الروم المحدد غير موجود!');
     
     const att = Array.from(message.attachments.values());
     const data = { bannerUrl: att[0].url, avatarUrl: att[1].url };
@@ -150,23 +118,19 @@ client.on(Events.MessageCreate, async (message) => {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('try_btn').setLabel('Try').setEmoji(EMOJI_ID).setStyle(ButtonStyle.Secondary)
         );
-        
-        // الإرسال في الروم المحدد
         await targetChannel.send({ files: [card], components: [row] });
-        await message.reply('✅ تم إنشاء التصميم وإرساله إلى الروم المخصص.');
+        await message.reply('✅ تم إرسال التصميم للروم.');
     } catch (err) {
-        console.error("❌ خطأ في إنشاء الكارد: ", err);
-        message.reply('❌ حدث خطأ أثناء معالجة الصور.');
+        console.error(err);
+        message.reply('❌ حدث خطأ أثناء المعالجة.');
     }
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isButton()) return;
-    if (interaction.customId === 'try_btn') {
-        const data = designCache.get(interaction.user.id);
-        if (!data) return interaction.reply({ content: '❌ لا توجد بيانات.', ephemeral: true });
-        await interaction.reply({ content: `الصور الأصلية:\nالبنر: ${data.bannerUrl}\nالأفاتار: ${data.avatarUrl}`, ephemeral: true });
-    }
+    if (!interaction.isButton() || interaction.customId !== 'try_btn') return;
+    const data = designCache.get(interaction.user.id);
+    if (!data) return interaction.reply({ content: '❌ لا توجد بيانات.', ephemeral: true });
+    await interaction.reply({ content: `الصور الأصلية:\nالبنر: ${data.bannerUrl}\nالأفاتار: ${data.avatarUrl}`, ephemeral: true });
 });
 
 client.login(process.env.TOKEN);
