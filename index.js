@@ -58,25 +58,6 @@ function drawImageCover(ctx, img, x, y, width, height) {
     ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, width, height);
 }
 
-// دالة رسم الأفاتارات (معدلة لتقبل إزاحة X مخصصة وحجم مخصص)
-async function drawAvatars(ctx, avatarUrls, startX, y, size) {
-    for (let i = 0; i < avatarUrls.length; i++) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(startX + (i * (size + 20)) + (size / 2), y + (size / 2), size / 2, 0, Math.PI * 2);
-        ctx.fillStyle = '#0f0f0f';
-        ctx.fill();
-        ctx.lineWidth = 8;
-        ctx.strokeStyle = '#0f0f0f';
-        ctx.stroke();
-        ctx.clip();
-        
-        const avatar = await loadImage(avatarUrls[i]);
-        ctx.drawImage(avatar, startX + (i * (size + 20)), y, size, size);
-        ctx.restore();
-    }
-}
-
 async function createMatchingCard(bannerUrl, avatarUrls, member) {
     const canvas = createCanvas(1000, 600);
     const ctx = canvas.getContext('2d');
@@ -86,16 +67,33 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
 
     const banner = await loadImage(bannerUrl);
     drawImageCover(ctx, banner, 40, 40, 920, 300); 
-    
-    const AVATAR_SIZE = 160; // تم ضبط الحجم لضمان عدم الخروج عن الإطار
+
+    // إعدادات الحجم والموقع
+    const AVATAR_SIZE = 150; 
     const Y_POS = 350;
+    const SPACING = 20;
+    
+    // 1. رسم جميع الأفاتارات في سطر واحد على اليسار
+    for (let i = 0; i < avatarUrls.length; i++) {
+        const x = 60 + (i * (AVATAR_SIZE + SPACING));
+        
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x + (AVATAR_SIZE / 2), Y_POS + (AVATAR_SIZE / 2), AVATAR_SIZE / 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f0f0f';
+        ctx.fill();
+        ctx.clip();
+        
+        const avatar = await loadImage(avatarUrls[i]);
+        ctx.drawImage(avatar, x, Y_POS, AVATAR_SIZE, AVATAR_SIZE);
+        ctx.restore();
+    }
 
-    // 1. رسم الأفاتار الأول فقط
-    await drawAvatars(ctx, [avatarUrls[0]], 60, Y_POS, AVATAR_SIZE);
+    // 2. حساب موقع النصوص (بعد آخر أفاتار مرسوم)
+    const lastAvatarX = 60 + ((avatarUrls.length - 1) * (AVATAR_SIZE + SPACING));
+    const textStartX = lastAvatarX + AVATAR_SIZE + 40; 
 
-    // 2. حساب مكان النصوص (بداية النصوص بعد الأفاتار الأول)
-    const textStartX = 60 + AVATAR_SIZE + 40;
-
+    // رسم الاسم واليوزر
     ctx.fillStyle = '#ffffff';
     ctx.font = `bold 40px "${FONT_NAME}"`;
     ctx.fillText(member.user.username, textStartX, 410);
@@ -104,27 +102,20 @@ async function createMatchingCard(bannerUrl, avatarUrls, member) {
     ctx.font = `20px "${FONT_NAME}"`;
     ctx.fillText('@' + member.user.username.toLowerCase(), textStartX, 440);
 
-    // 3. رسم باقي الأفاتارات بعد النصوص
-    const remainingAvatars = avatarUrls.slice(1);
-    if (remainingAvatars.length > 0) {
-        // نضع مسافة إضافية للأفاتارات التالية (280 بكسل بعد النصوص)
-        await drawAvatars(ctx, remainingAvatars, textStartX + 280, Y_POS, AVATAR_SIZE);
-    }
-
-    // 4. التواريخ في الأسفل
+    // 3. التواريخ تحت النصوص
     ctx.fillStyle = '#777777';
-    ctx.font = `bold 12px "${FONT_NAME}"`;
-    ctx.fillText('MEMBER SINCE', textStartX, 510);
-    ctx.fillText('JOINED SERVER', textStartX + 200, 510);
+    ctx.font = `bold 14px "${FONT_NAME}"`;
+    ctx.fillText('MEMBER SINCE', textStartX, 490);
+    ctx.fillText('JOINED SERVER', textStartX + 200, 490);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = `18px "${FONT_NAME}"`;
+    ctx.font = `20px "${FONT_NAME}"`;
     
     const memberSince = member.user.createdAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
     const joinedServer = member.joinedAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
     
-    ctx.fillText(memberSince, textStartX, 540);
-    ctx.fillText(joinedServer, textStartX + 200, 540);
+    ctx.fillText(memberSince, textStartX, 520);
+    ctx.fillText(joinedServer, textStartX + 200, 520);
 
     return canvas;
 }
