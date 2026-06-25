@@ -114,7 +114,7 @@ async function createUnifiedCard(bannerUrl, avatarUrls, member) {
         await drawAvatar(avatarUrls[i], currentX, Y_AVATARS, AVATAR_SIZE);
         currentX += (AVATAR_SIZE + spacing);
     }
-
+});
     ctx.fillStyle = '#777777';
     ctx.font = `bold 14px "${FONT_NAME}"`;
     ctx.fillText('MEMBER SINCE', START_X, 550);
@@ -135,7 +135,6 @@ client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.member?.roles.cache.has(ROLE_ID) || isProcessing.has(message.author.id))
         return;
 }
-          
 });
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.member?.roles.cache.has(ROLE_ID) || isProcessing.has(message.author.id)) return;
