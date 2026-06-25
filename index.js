@@ -6,14 +6,10 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 
-// --- إعداد الفونت ---
 const FONT_NAME = 'MyCustomFont';
 const fontPath = path.join(__dirname, 'font.ttf');
 if (fs.existsSync(fontPath)) {
     GlobalFonts.registerFromPath(fontPath, FONT_NAME);
-    console.log('✅ تم تحميل الخط بنجاح');
-} else {
-    console.error('⚠️ خطأ: ملف font.ttf غير موجود في المجلد!');
 }
 
 const app = express();
@@ -28,22 +24,13 @@ const MATCHING_CHANNEL_ID = '1518670780911583283';
 const VOICE_CHANNEL_ID = '1518127536834613360';
 const ROLE_ID = '1501374221992071348';
 const isProcessing = new Set();
+const designCache = new Map(); // هنا يتم تخزين الروابط في الذاكرة
 
 client.once(Events.ClientReady, async (c) => {
     client.user.setPresence({ 
         activities: [{ name: 'JOJO’s Designs', type: ActivityType.Streaming, url: 'https://www.twitch.tv/discord' }], 
         status: 'online' 
     });
-    
-    const vc = client.channels.cache.get(VOICE_CHANNEL_ID);
-    if (vc) {
-        const connection = joinVoiceChannel({
-            channelId: vc.id,
-            guildId: vc.guild.id,
-            adapterCreator: vc.guild.voiceAdapterCreator,
-        });
-        connection.on(VoiceConnectionStatus.Ready, () => console.log('✅ متصل بالروم الصوتي!'));
-    }
 });
 
 function drawImageCover(ctx, img, x, y, width, height) {
@@ -88,57 +75,37 @@ async function createUnifiedCard(bannerUrl, avatarUrls, member) {
     ctx.fillStyle = '#ffffff';
     ctx.font = `bold 40px "${FONT_NAME}"`;
     ctx.fillText(member.user.username, textStartX, 380);
-    
     ctx.fillStyle = '#aaaaaa';
     ctx.font = `20px "${FONT_NAME}"`;
     ctx.fillText('@' + member.user.username.toLowerCase(), textStartX, 410);
 
     let currentX = textStartX + 100; 
     const spacing = 20; 
-
     for (let i = 1; i < avatarUrls.length; i++) {
         if (currentX + AVATAR_SIZE > 980) break;
         await drawAvatar(avatarUrls[i], currentX, Y_AVATARS, AVATAR_SIZE);
         currentX += (AVATAR_SIZE + spacing);
     }
-
-    ctx.fillStyle = '#777777';
-    ctx.font = `bold 14px "${FONT_NAME}"`;
-    ctx.fillText('MEMBER SINCE', START_X, 550);
-    ctx.fillText('JOINED SERVER', START_X + 250, 550);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `20px "${FONT_NAME}"`;
-    const memberSince = member.user.createdAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
-    const joinedServer = member.joinedAt.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
-    ctx.fillText(memberSince, START_X, 580);
-    ctx.fillText(joinedServer, START_X + 250, 580);
-
     return canvas;
 }
 
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.member?.roles.cache.has(ROLE_ID) || isProcessing.has(message.author.id)) return;
+    
     let command = message.content.split(' ')[0];
-    let count = 0;
-    let targetRoom = null;
-    if (command === '!design') { count = 1; targetRoom = DESIGN_CHANNEL_ID; }
-    else if (command === '!Matching2') { count = 2; targetRoom = MATCHING_CHANNEL_ID; }
-    else if (command === '!Matching3') { count = 3; targetRoom = MATCHING_CHANNEL_ID; }
-    else if (command === '!Matching4') { count = 4; targetRoom = MATCHING_CHANNEL_ID; }
-    else return;
+    let count = (command === '!design') ? 1 : (command === '!Matching2') ? 2 : (command === '!Matching3') ? 3 : (command === '!Matching4') ? 4 : 0;
+    let targetRoom = (count > 1) ? MATCHING_CHANNEL_ID : (count === 1) ? DESIGN_CHANNEL_ID : null;
+    if (!count || message.attachments.size < (count + 1)) return;
 
-    if (message.attachments.size < (count + 1)) return;
     isProcessing.add(message.author.id);
     const targetChannel = client.channels.cache.get(targetRoom);
     try {
         const bannerUrl = message.attachments.first().url;
         const avatarUrls = [];
         for(let i = 1; i <= count; i++) avatarUrls.push(message.attachments.at(i).url);
+
         const canvas = await createUnifiedCard(bannerUrl, avatarUrls, message.member);
         const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'profile.png' });
-        
-        // نجهز الصور الأصلية لترفق مع الرسالة
-        const originalImages = avatarUrls.map((url, i) => new AttachmentBuilder(url, { name: `avatar${i}.png` }));
         
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('try_design').setLabel('Try').setStyle(ButtonStyle.Secondary).setEmoji('1518609977386733678'),
@@ -146,10 +113,9 @@ client.on(Events.MessageCreate, async (message) => {
         );
 
         if (targetChannel) {
-            await targetChannel.send({ 
-                files: [attachment, ...originalImages],
-                components: [row]
-            });
+            const sent = await targetChannel.send({ files: [attachment], components: [row] });
+            // هنا يتم تخزين الروابط في الذاكرة باستخدام معرف الرسالة المرسلة
+            designCache.set(sent.id, { banner: bannerUrl, avatars: avatarUrls });
         }
         await message.delete().catch(() => {});
     } catch (err) { console.error(err); } finally { isProcessing.delete(message.author.id); }
@@ -157,17 +123,19 @@ client.on(Events.MessageCreate, async (message) => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isButton()) return;
-    const message = await interaction.message.fetch();
-    // نأخذ المرفقات من الرسالة، ونستثني أول مرفق لأنه "الكارد"
-    const attachments = Array.from(message.attachments.values()).slice(1);
     
+    const data = designCache.get(interaction.message.id);
+    if (!data) return interaction.reply({ content: '❌ انتهت صلاحية الصور، أعد التصميم.', ephemeral: true });
+
+    const files = [data.banner, ...data.avatars].map((url, i) => new AttachmentBuilder(url, { name: `image${i}.png` }));
+
     if (interaction.customId === 'try_design') {
-        await interaction.reply({ content: 'تفضل، هذه هي صورك الأصلية:', files: attachments, ephemeral: true });
+        await interaction.reply({ content: 'تفضل الصور الأصلية:', files: files, ephemeral: true });
     } else if (interaction.customId === 'send_dm') {
         try {
-            await interaction.user.send({ content: 'تفضل، هذه هي صورك الأصلية:', files: attachments });
+            await interaction.user.send({ content: 'صورك الأصلية:', files: files });
             await interaction.reply({ content: '✅ تم الإرسال للخاص!', ephemeral: true });
-        } catch (err) { await interaction.reply({ content: 'افتح الخاص أولاً!', ephemeral: true }); }
+        } catch (e) { await interaction.reply({ content: 'افتح الخاص!', ephemeral: true }); }
     }
 });
 
