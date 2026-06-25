@@ -200,7 +200,7 @@ if (interaction.customId === 'try_design') {
         ephemeral: true 
     });
 }
-    } else if (interaction.customId === 'send_dm') {
+     else if (interaction.customId === 'send_dm') {
         try {
             await interaction.user.send({ 
                 content: 'خذ خذ بس وفارق:', 
